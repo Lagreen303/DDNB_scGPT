@@ -43,9 +43,10 @@ def main():
     parser = argparse.ArgumentParser(description='scGPT Zeroshot Analysis')
     parser.add_argument('--input', required=True, help='Input h5ad file path')
     parser.add_argument('--output', required=True, help='Parent output directory; run subdir will be created inside')
+    parser.add_argument('--cell-type-col', default='cell_type', help='Cell type column name')
     parser.add_argument('--gtf', required=True, help='GTF file path')
     parser.add_argument('--vocab', required=True, help='scGPT vocabulary file path')
-    parser.add_argument('--cell-type-col', default='cell_type', help='Cell type column name')
+    
     
     args = parser.parse_args()
     

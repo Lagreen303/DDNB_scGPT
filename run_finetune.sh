@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --time=20:00:00
+#SBATCH --time=60:00:00
 #SBATCH --mem=200G
 #SBATCH --partition=quad_h200
 #SBATCH --export=ALL
