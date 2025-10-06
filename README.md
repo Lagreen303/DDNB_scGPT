@@ -48,7 +48,7 @@ Script: `run_zeroshot.sh`
 Usage:
 
 ```bash
-./run_zeroshot.sh <input.h5ad> <output_dir> [gtf_file] [vocab_file] [cell_type_col]
+./run_zeroshot.sh <input.h5ad> <output_dir> [cell_type_col] [gtf_file] [vocab_file] 
 ```
 
 Parameters:
