@@ -34,7 +34,7 @@ Note: The provided scripts already execute inside an Apptainer environment and e
 If you don't have `scgpt_vocab.txt`, generate it from the cached `vocab.json`:
 
 ```bash
-python3 get_scgpt_vocab.py
+./run_python3.sh get_scgpt_vocab.py
 ```
 
 This reads `.cache/helical/models/scgpt/scGPT_CP/vocab.json` and writes `scgpt_vocab.txt` in this directory (one gene symbol per line).
