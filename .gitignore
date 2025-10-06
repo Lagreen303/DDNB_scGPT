@@ -1,0 +1,48 @@
+# Data and results
+/data/
+/data/**
+/outputs/
+/outputs/**
+/output/
+/output/**
+
+# SLURM logs
+slurm-*.out
+slurm-*.err
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.python_history
+.ipython/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Environments
+.env
+.venv
+venv/
+.env*/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Images and large intermediates (usually under outputs/ already)
+*.png
+*.jpg
+*.jpeg
+*.tiff
+*.pdf
+*.gtf.gz
