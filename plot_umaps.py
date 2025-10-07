@@ -1,60 +1,84 @@
-# basic_umap_scgpt.py
-# Minimal UMAP plot from obsm["X_scgpt_FT"], colored by a given cell-type column.
+#!/usr/bin/env python3
+"""
+Basic UMAP plot from scGPT or finetuned scGPT embeddings.
+Automatically uses obsm['X_scgpt_FT'] if present, otherwise falls back to obsm['X_scgpt'].
 
+Usage (called by run_umap.sh):
+    python3 plot_umaps.py <input.h5ad> <cell_type_col> [output.png]
+"""
+
+import sys
+import os
 import anndata as ad
 import scanpy as sc
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
 
-# --- user settings ---
-INPUT_H5AD = "/iridisfs/ddnb/Luke/scFMs/scGPT/outputs/onek1k_test15donor__ft-onek1k_train951don__ep3__20251006-1152/onek1k_test15donors_with_X_scgpt_FT.h5ad"     # path to AnnData
-CELLTYPE_COL = "predicted.celltype.l2"         # obs column to color by
-OUTPUT_PNG = "/iridisfs/ddnb/Luke/scFMs/scGPT/outputs/onek1k_test15donor__ft-onek1k_train951don__ep3__20251006-1152/umap.png"   # output image path
-# ---------------------
 
-# load
-adata = ad.read_h5ad(INPUT_H5AD)
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python3 plot_umaps.py <input.h5ad> <cell_type_col> [output.png]")
+        sys.exit(1)
 
-# sanity checks
-if "X_scgpt_FT" not in adata.obsm:
-    raise KeyError("obsm['X_scgpt_FT'] not found.")
-if CELLTYPE_COL not in adata.obs.columns:
-    adata.obs[CELLTYPE_COL] = "unknown"
+    input_path = sys.argv[1]
+    celltype_col = sys.argv[2]
+    output_png = sys.argv[3] if len(sys.argv) > 3 else f"{os.path.splitext(os.path.basename(input_path))[0]}_umap.png"
 
-# compute neighbors + umap using the finetuned embeddings
-sc.pp.neighbors(adata, use_rep="X_scgpt_FT", n_neighbors=15, metric="cosine")
-sc.tl.umap(adata, random_state=0)
+    print(f"Loading AnnData: {input_path}")
+    adata = ad.read_h5ad(input_path)
 
-# prep dataframe for plotting
-umap = adata.obsm["X_umap"]
-df = pd.DataFrame(umap, columns=["UMAP1", "UMAP2"])
-df["label"] = adata.obs[CELLTYPE_COL].astype(str).values
+    # choose embedding automatically
+    emb_key = None
+    if "X_scgpt_FT" in adata.obsm:
+        emb_key = "X_scgpt_FT"
+    elif "X_scgpt" in adata.obsm:
+        emb_key = "X_scgpt"
+    else:
+        raise KeyError("Neither obsm['X_scgpt_FT'] nor obsm['X_scgpt'] found in AnnData.")
 
-# color map by category
-cats = pd.Categorical(df["label"])
-df["label"] = cats
-colors = plt.cm.get_cmap("tab20", len(cats.categories)).colors
-lut = {cat: colors[i % len(colors)] for i, cat in enumerate(cats.categories)}
-point_colors = [lut[c] for c in df["label"]]
+    print(f"Using embeddings from obsm['{emb_key}'].")
 
-# plot
-fig, ax = plt.subplots(figsize=(7, 7))
-ax.scatter(df["UMAP1"], df["UMAP2"], s=1.2, c=point_colors, linewidths=0)
-ax.set_xlabel("UMAP1")
-ax.set_ylabel("UMAP2")
-ax.set_title("UMAP of finetuned scGPT embeddings")
-ax.set_aspect("equal", adjustable="datalim")  # avoid warping
+    if celltype_col not in adata.obs.columns:
+        print(f"Warning: {celltype_col} not found in obs; using 'unknown'.")
+        adata.obs[celltype_col] = "unknown"
 
-# simple legend (outside)
-handles = [plt.Line2D([0], [0], marker='o', linestyle='',
-                      markersize=6, color=lut[c], label=str(c))
-           for c in cats.categories]
-leg = ax.legend(handles=handles, title=CELLTYPE_COL,
-                bbox_to_anchor=(1.02, 1), loc="upper left",
-                borderaxespad=0., frameon=False, fontsize=8, title_fontsize=9)
+    print("Computing neighbours and UMAP ...")
+    sc.pp.neighbors(adata, use_rep=emb_key, n_neighbors=15, metric="cosine")
+    sc.tl.umap(adata)
 
-fig.tight_layout()
-fig.savefig(OUTPUT_PNG, dpi=300, bbox_inches="tight")
-plt.close(fig)
-print(f"saved: {OUTPUT_PNG}")
+    umap = adata.obsm["X_umap"]
+    df = pd.DataFrame(umap, columns=["UMAP1", "UMAP2"])
+    df["Cell Type"] = adata.obs[celltype_col].astype(str).values
+
+    # colour map
+    cats = pd.Categorical(df["Cell Type"])
+    cmap = plt.cm.get_cmap("tab20", len(cats.categories))
+    lut = {cat: cmap(i % cmap.N) for i, cat in enumerate(cats.categories)}
+    colors = [lut[c] for c in df["Cell Type"]]
+
+    # plot
+    fig, ax = plt.subplots(figsize=(7, 7))
+    ax.scatter(df["UMAP1"], df["UMAP2"], s=1.5, c=colors, linewidths=0)
+    ax.set_xlabel("UMAP1")
+    ax.set_ylabel("UMAP2")
+    ax.set_title(f"UMAP of {emb_key} embeddings")
+    ax.set_aspect("equal", adjustable="datalim")
+
+    # legend
+    handles = [
+        plt.Line2D([0], [0], marker="o", color="w",
+                   markerfacecolor=lut[c], label=c, markersize=6)
+        for c in cats.categories
+    ]
+    ax.legend(handles=handles, title=celltype_col,
+              bbox_to_anchor=(1.02, 1), loc="upper left",
+              frameon=False, fontsize=8, title_fontsize=9)
+
+    fig.tight_layout()
+    fig.savefig(output_png, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved: {output_png}")
+
+
+if __name__ == "__main__":
+    main()

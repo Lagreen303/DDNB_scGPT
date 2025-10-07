@@ -120,13 +120,13 @@ def main():
     else:
         ann_data.obsm["X_scgpt"] = embeddings 
 
-    # Compute neighbors/UMAP using scGPT embeddings (match plot_umaps style)
+    # Compute neighbors/UMAP using scGPT embeddings 
     sc.pp.neighbors(ann_data, use_rep="X_scgpt", n_neighbors=15, metric="cosine")
     sc.tl.umap(ann_data, random_state=0)
     ann_data.obsm["X_umap_scgpt"] = ann_data.obsm["X_umap"]
 
     # Extract UMAP coordinates into a dataframe and plot with consistent styling
-    # Prepare data for plotting (matplotlib + categorical colors, like plot_umaps)
+    # Prepare data for plotting 
     umap = ann_data.obsm["X_umap_scgpt"]
     df = pd.DataFrame(umap, columns=["UMAP1", "UMAP2"])
     labels = ann_data.obs.get(args.cell_type_col, pd.Series(["unknown"] * ann_data.n_obs, index=ann_data.obs_names)).astype(str)
