@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --time=12:00:00
-#SBATCH --mem=470G
+#SBATCH --mem=100G
 #SBATCH --partition=quad_h200
 #SBATCH --export=ALL
-#SBATCH --gpus=2
-#SBATCH --cpus-per-task=24
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=8
 
 module load apptainer
 apptainer exec -H $PWD \

@@ -120,43 +120,41 @@ def main():
     else:
         ann_data.obsm["X_scgpt"] = embeddings 
 
-    # Compute neighbors using scGPT embeddings
-    sc.pp.neighbors(ann_data, use_rep="X_scgpt")
-    # Compute UMAP based on those neighbors
-    sc.tl.umap(ann_data)
+    # Compute neighbors/UMAP using scGPT embeddings (match plot_umaps style)
+    sc.pp.neighbors(ann_data, use_rep="X_scgpt", n_neighbors=15, metric="cosine")
+    sc.tl.umap(ann_data, random_state=0)
     ann_data.obsm["X_umap_scgpt"] = ann_data.obsm["X_umap"]
 
     # Extract UMAP coordinates into a dataframe and plot with consistent styling
-    plot_df = pd.DataFrame(ann_data.obsm["X_umap_scgpt"], columns=["UMAP1", "UMAP2"])
-    plot_df["Cell Type"] = ann_data.obs[args.cell_type_col].astype(str).to_numpy()
+    # Prepare data for plotting (matplotlib + categorical colors, like plot_umaps)
+    umap = ann_data.obsm["X_umap_scgpt"]
+    df = pd.DataFrame(umap, columns=["UMAP1", "UMAP2"])
+    labels = ann_data.obs.get(args.cell_type_col, pd.Series(["unknown"] * ann_data.n_obs, index=ann_data.obs_names)).astype(str)
+    df["label"] = pd.Categorical(labels.values)
 
-    # Global styling to match other scripts
-    plt.rcParams.update({
-        'font.size': 24,
-        'axes.titlesize': 36,
-        'axes.labelsize': 28,
-        'xtick.labelsize': 24,
-        'ytick.labelsize': 24,
-        'legend.fontsize': 20,
-        'figure.titlesize': 40
-    })
-
-    unique_celltypes = sorted(np.unique(plot_df["Cell Type"]))
-    palette = sns.color_palette("husl", len(unique_celltypes))
-    lut = dict(zip(unique_celltypes, palette))
+    colors = plt.cm.get_cmap("tab20", len(df["label"].cat.categories)).colors
+    lut = {cat: colors[i % len(colors)] for i, cat in enumerate(df["label"].cat.categories)}
+    point_colors = [lut[c] for c in df["label"]]
 
     flush_print("Plotting and saving UMAP...")
-    plt.figure(figsize=(10, 10))
-    sns.scatterplot(data=plot_df, x="UMAP1", y="UMAP2", hue="Cell Type", palette=lut, s=1.2)
-    plt.title("UMAP: Colored by Cell Type", fontsize=50, fontweight='bold')
-    plt.xlabel("UMAP1", fontsize=28)
-    plt.ylabel("UMAP2", fontsize=28)
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=24, title_fontsize=28, title="Cell Type")
-    plt.tight_layout()
-    umap_plot_path = os.path.join(output_dir, f"{base_name}_scGPT_umap.png")
-    plt.savefig(umap_plot_path, dpi=300, bbox_inches='tight')
+    fig, ax = plt.subplots(figsize=(7, 7))
+    ax.scatter(df["UMAP1"], df["UMAP2"], s=1.2, c=point_colors, linewidths=0)
+    ax.set_xlabel("UMAP1")
+    ax.set_ylabel("UMAP2")
+    ax.set_title("UMAP of scGPT embeddings")
+    ax.set_aspect("equal", adjustable="datalim")
+
+    handles = [plt.Line2D([0], [0], marker='o', linestyle='', markersize=6, color=lut[c], label=str(c))
+               for c in df["label"].cat.categories]
+    ax.legend(handles=handles, title=args.cell_type_col,
+              bbox_to_anchor=(1.02, 1), loc="upper left",
+              borderaxespad=0., frameon=False, fontsize=8, title_fontsize=9)
+
+    fig.tight_layout()
+    umap_plot_path = os.path.join(output_dir, f"{base_name}_X_scgpt_umap.png")
+    fig.savefig(umap_plot_path, dpi=300, bbox_inches='tight')
     flush_print(f"UMAP plot saved to {umap_plot_path}")
-    plt.close()
+    plt.close(fig)
 
     #save the AnnData object with embeddings
     flush_print("Saving AnnData with scGPT embeddings...")
